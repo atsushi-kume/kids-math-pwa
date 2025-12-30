@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>けいさんゲーム</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+body {
+  font-family: system-ui, -apple-system;
+  text-align: center;
+  background: #f0f8ff;
+  margin: 0;
+  padding: 20px;
+}
+
+h1 { font-size: 2rem; }
+
+.problem {
+  font-size: 2.5rem;
+  margin: 20px 0;
+}
+
+input {
+  font-size: 2rem;
+  width: 100px;
+  text-align: center;
+}
+
+button {
+  font-size: 1.5rem;
+  padding: 15px 25px;
+  margin: 10px;
+  border-radius: 12px;
+  border: none;
+}
+
+.ok { background: #4caf50; color: white; }
+.next { background: #2196f3; color: white; }
+
+.star {
+  position: fixed;
+  left: 50%;
+  bottom: -50px;
+  font-size: 3rem;
+  animation: fly 1s ease-out forwards;
+}
+
+@keyframes fly {
+  to { transform: translate(-50%, -120vh); opacity: 0; }
+}
+</style>
+</head>
+
+<body>
+<h1>けいさんゲーム</h1>
+
+<div class="problem">
+  <span id="l"></span>
+  <span id="op"></span>
+  <span id="r"></span> =
+  <input id="ans" inputmode="numeric">
+</div>
+
+<button class="ok" onclick="check()">こたえあわせ</button>
+<p id="msg"></p>
+
+<hr>
+
+<div>
+  <label><input type="radio" name="digit" value="1" checked>1けた</label>
+  <label><input type="radio" name="digit" value="2">2けた</label>
+</div>
+
+<div>
+  <label><input type="checkbox" id="add" checked>＋</label>
+  <label><input type="checkbox" id="sub" checked>－</label>
+  <label><input type="checkbox" id="mul" checked>×</label>
+  <label><input type="checkbox" id="div" checked>÷</label>
+</div>
+
+<button class="next" onclick="make()">もんだいをつくる</button>
+
+<audio id="okSound" src="ok.mp3"></audio>
+<audio id="ngSound" src="ng.mp3"></audio>
+
+<script>
+let L,R,OP;
+
+function ops(){
+  const o=[];
+  if(add.checked)o.push("+");
+  if(sub.checked)o.push("-");
+  if(mul.checked)o.push("×");
+  if(div.checked)o.push("÷");
+  return o;
+}
+
+function make(){
+  const max=document.querySelector('input[name=digit]:checked').value==1?9:99;
+  const o=ops();
+  if(!o.length)return;
+
+  OP=o[Math.floor(Math.random()*o.length)];
+
+  do{
+    L=Math.floor(Math.random()*max)+1;
+    R=Math.floor(Math.random()*max)+1;
+    if(OP=="-" && L<R)[L,R]=[R,L];
+    if(OP=="÷")L=L*R;
+  }while(OP=="÷" && R==0);
+
+  l.textContent=L;
+  r.textContent=R;
+  op.textContent=OP;
+  ans.value="";
+  msg.textContent="";
+}
+
+function check(){
+  const a=Number(ans.value);
+  let c;
+  if(OP=="+")c=L+R;
+  if(OP=="-")c=L-R;
+  if(OP=="×")c=L*R;
+  if(OP=="÷")c=L/R;
+
+  if(a===c){
+    msg.textContent="せいかい！";
+    okSound.play();
+    star();
+  }else{
+    msg.textContent="ざんねん… こたえは "+c;
+    ngSound.play();
+  }
+}
+
+function star(){
+  const s=document.createElement("div");
+  s.className="star";
+  s.textContent="⭐️";
+  document.body.appendChild(s);
+  setTimeout(()=>s.remove(),1000);
+}
+
+make();
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>

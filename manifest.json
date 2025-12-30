@@ -1,0 +1,9 @@
+﻿{
+  "name": "けいさんゲーム",
+  "short_name": "けいさん",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f0f8ff",
+  "theme_color": "#2196f3",
+  "icons": []
+}
