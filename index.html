@@ -1,155 +1,266 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<title>けいさんドリル</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>けいさんゲーム</title>
 
-<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
 <style>
 body {
-  font-family: system-ui, -apple-system;
-  text-align: center;
-  background: #f0f8ff;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #f2f6ff;
   margin: 0;
-  padding: 20px;
-}
-
-h1 { font-size: 2rem; }
-
-.problem {
-  font-size: 2.5rem;
-  margin: 20px 0;
-}
-
-input {
-  font-size: 2rem;
-  width: 100px;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
   text-align: center;
+}
+
+h1 {
+  font-size: 32px;
+  margin: 10px 0;
+}
+
+.question {
+  font-size: 42px;
+  margin: 20px 0;
+  position: relative;
+}
+
+.answer {
+  font-size: 40px;
+  width: 200px;
+  padding: 14px;
+  text-align: center;
+  border-radius: 16px;
+  border: 3px solid #bbb;
 }
 
 button {
-  font-size: 1.5rem;
-  padding: 15px 25px;
-  margin: 10px;
-  border-radius: 12px;
+  width: 100%;
+  max-width: 360px;
+  font-size: 28px;
+  padding: 20px;
+  margin: 12px auto;
+  border-radius: 20px;
   border: none;
+  color: white;
 }
 
-.ok { background: #4caf50; color: white; }
-.next { background: #2196f3; color: white; }
+.btn-generate { background: #4caf50; }
+.btn-check { background: #2196f3; }
 
+.result {
+  font-size: 40px;
+  font-weight: bold;
+  min-height: 60px;
+  margin-top: 14px;
+}
+
+.result.correctText {
+  color: #ff9800;
+  text-shadow: 0 0 8px #ffd54f;
+}
+
+.result.wrongText {
+  color: #f44336;
+  text-shadow: 0 0 6px #ffcdd2;
+}
+
+.settings {
+  background: white;
+  border-radius: 20px;
+  padding: 14px;
+  margin-top: 24px;
+}
+
+.settings h3 {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+.settings label {
+  font-size: 22px;
+  display: block;
+  margin: 8px 0;
+}
+
+/* ===== 正解・不正解アニメ ===== */
+@keyframes correctBounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.3); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+.correct {
+  animation: correctBounce 0.4s ease;
+  background: #e6ffe9;
+  border-radius: 16px;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(10px); }
+  60% { transform: translateX(-8px); }
+  80% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}
+.wrong {
+  animation: shake 0.4s;
+  background: #ffe6e6;
+  border-radius: 16px;
+}
+
+/* ===== 星アニメ ===== */
 .star {
-  position: fixed;
-  left: 50%;
-  bottom: -50px;
-  font-size: 3rem;
-  animation: fly 1s ease-out forwards;
+  position: absolute;
+  font-size: 28px;
+  color: gold;
+  animation: flyStar 0.8s ease-out forwards;
+  pointer-events: none;
 }
 
-@keyframes fly {
-  to { transform: translate(-50%, -120vh); opacity: 0; }
+@keyframes flyStar {
+  0% { transform: translate(0,0) scale(0.5); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
 }
 </style>
 </head>
 
 <body>
-<h1>けいさんゲーム</h1>
 
-<div class="problem">
-  <span id="l"></span>
-  <span id="op"></span>
-  <span id="r"></span> =
-  <input id="ans" inputmode="numeric">
+<h1>けいさんドリル</h1>
+
+<div id="questionBox" class="question">
+  <span id="left">0</span>
+  <span id="op">＋</span>
+  <span id="right">0</span> =
 </div>
 
-<button class="ok" onclick="check()">こたえあわせ</button>
-<p id="msg"></p>
+<input
+  id="answer"
+  class="answer"
+  type="text"
+  inputmode="numeric"
+  pattern="[0-9]*"
+  placeholder="こたえ"
+/>
 
-<hr>
+<button class="btn-generate" onclick="generateProblem()">もんだいをつくる</button>
+<button class="btn-check" onclick="checkAnswer()">こたえあわせ</button>
 
-<div>
-  <label><input type="radio" name="digit" value="1" checked>1けた</label>
-  <label><input type="radio" name="digit" value="2">2けた</label>
+<div id="result" class="result"></div>
+
+<div class="settings">
+  <h3>せってい</h3>
+
+  <label>
+    けたすう：
+    <input id="digits" type="number" min="1" max="3" value="1">
+  </label>
+
+  <label><input type="checkbox" class="opCheck" value="＋" checked> たしざん</label>
+  <label><input type="checkbox" class="opCheck" value="－" checked> ひきざん</label>
+  <label><input type="checkbox" class="opCheck" value="×"> かけざん</label>
+  <label><input type="checkbox" class="opCheck" value="÷"> わりざん</label>
 </div>
-
-<div>
-  <label><input type="checkbox" id="add" checked>＋</label>
-  <label><input type="checkbox" id="sub" checked>－</label>
-  <label><input type="checkbox" id="mul" checked>×</label>
-  <label><input type="checkbox" id="div" checked>÷</label>
-</div>
-
-<button class="next" onclick="make()">もんだいをつくる</button>
-
-<audio id="okSound" src="ok.mp3"></audio>
-<audio id="ngSound" src="ng.mp3"></audio>
 
 <script>
-let L,R,OP;
+let correctAnswer = 0;
 
-function ops(){
-  const o=[];
-  if(add.checked)o.push("+");
-  if(sub.checked)o.push("-");
-  if(mul.checked)o.push("×");
-  if(div.checked)o.push("÷");
-  return o;
+/* ===== 効果音 ===== */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(freq) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = freq;
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+  osc.stop(audioCtx.currentTime + 0.4);
 }
+const playCorrect = () => playSound(880);
+const playWrong = () => playSound(220);
 
-function make(){
-  const max=document.querySelector('input[name=digit]:checked').value==1?9:99;
-  const o=ops();
-  if(!o.length)return;
-
-  OP=o[Math.floor(Math.random()*o.length)];
-
-  do{
-    L=Math.floor(Math.random()*max)+1;
-    R=Math.floor(Math.random()*max)+1;
-    if(OP=="-" && L<R)[L,R]=[R,L];
-    if(OP=="÷")L=L*R;
-  }while(OP=="÷" && R==0);
-
-  l.textContent=L;
-  r.textContent=R;
-  op.textContent=OP;
-  ans.value="";
-  msg.textContent="";
-}
-
-function check(){
-  const a=Number(ans.value);
-  let c;
-  if(OP=="+")c=L+R;
-  if(OP=="-")c=L-R;
-  if(OP=="×")c=L*R;
-  if(OP=="÷")c=L/R;
-
-  if(a===c){
-    msg.textContent="せいかい！";
-    okSound.play();
-    star();
-  }else{
-    msg.textContent="ざんねん… こたえは "+c;
-    ngSound.play();
+/* ===== 星 ===== */
+function spawnStars() {
+  const box = document.getElementById("questionBox");
+  for (let i = 0; i < 7; i++) {
+    const star = document.createElement("div");
+    star.className = "star";
+    star.textContent = "★";
+    star.style.setProperty("--dx", (Math.random()*240-120)+"px");
+    star.style.setProperty("--dy", (-Math.random()*140-40)+"px");
+    box.appendChild(star);
+    setTimeout(() => star.remove(), 800);
   }
 }
 
-function star(){
-  const s=document.createElement("div");
-  s.className="star";
-  s.textContent="⭐️";
-  document.body.appendChild(s);
-  setTimeout(()=>s.remove(),1000);
+/* ===== 問題生成 ===== */
+function generateProblem() {
+  const digits = Number(document.getElementById("digits").value) || 1;
+  const max = Math.pow(10, digits) - 1;
+
+  const ops = [...document.querySelectorAll(".opCheck:checked")].map(el => el.value);
+  if (!ops.length) return alert("えんざんをえらんでね");
+
+  let left, right, op, result;
+  op = ops[Math.floor(Math.random()*ops.length)];
+
+  if (op === "÷") {
+    right = Math.floor(Math.random()*max)+1;
+    result = Math.floor(Math.random()*max)+1;
+    left = right * result;
+  } else {
+    left = Math.floor(Math.random()*max)+1;
+    right = Math.floor(Math.random()*max)+1;
+    if (op === "－" && left < right) [left, right] = [right, left];
+    if (op === "＋") result = left + right;
+    if (op === "－") result = left - right;
+    if (op === "×") result = left * right;
+  }
+
+  leftEl.textContent = left;
+  rightEl.textContent = right;
+  opEl.textContent = op;
+  answer.value = "";
+  resultEl.textContent = "";
+  resultEl.className = "result";
+  correctAnswer = result;
 }
 
-make();
+const leftEl = document.getElementById("left");
+const rightEl = document.getElementById("right");
+const opEl = document.getElementById("op");
+const answer = document.getElementById("answer");
+const resultEl = document.getElementById("result");
+const box = document.getElementById("questionBox");
 
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("sw.js");
+/* ===== 答え合わせ ===== */
+function checkAnswer() {
+  const user = Number(answer.value);
+  box.classList.remove("correct","wrong");
+  void box.offsetWidth;
+
+  if (user === correctAnswer) {
+    resultEl.textContent = "🎉 せいかい！";
+    resultEl.className = "result correctText";
+    box.classList.add("correct");
+    playCorrect();
+    spawnStars();
+  } else {
+    resultEl.textContent = "💦 ちがうよ";
+    resultEl.className = "result wrongText";
+    box.classList.add("wrong");
+    playWrong();
+  }
 }
 </script>
+
 </body>
 </html>
